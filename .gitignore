@@ -29,3 +29,6 @@
 catalina.base_IS_UNDEFINED/
 fzc/catalina.base_IS_UNDEFINED
 hive-client/catalina.base_IS_UNDEFINED
+fzc/target/
+hive-client/target/
+kafka-config/target/

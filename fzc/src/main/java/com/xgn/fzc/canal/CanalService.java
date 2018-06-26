@@ -27,6 +27,7 @@ import javax.annotation.Resource;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
@@ -85,7 +86,7 @@ public class CanalService implements ApplicationContextAware {
             new Thread.UncaughtExceptionHandler() {
                 @Override
                 public void uncaughtException(Thread t, Throwable e) {
-                    log.error("uncaught exception {} {}", t, e);
+                    log.error("uncaught exception {} {} {}", t, Thread.currentThread(), e);
                 }
             };
 
@@ -94,8 +95,8 @@ public class CanalService implements ApplicationContextAware {
         thread = new Thread(new Runnable() {
             @Override
             public void run() {
+                log.info("start thread {}", Thread.currentThread());
                 process();
-                log.error("after process");
             }
         });
 
@@ -104,7 +105,6 @@ public class CanalService implements ApplicationContextAware {
 
         thread.setUncaughtExceptionHandler(handler);
         thread.start();
-        running = true;
 
     }
 
@@ -129,12 +129,14 @@ public class CanalService implements ApplicationContextAware {
     private void process() {
         int blockSize = 5 << 10;
         log.info("canal client start");
+        running = true;
         while (running) {
             try {
                 MDC.put("destination", canalProperties.getDestination());
                 connector.connect();
                 connector.subscribe();
                 connector.rollback();
+                log.info("connected {} {}",connector);
                 while (running) {
                     Message message = connector.getWithoutAck(blockSize);
                     long batchId = message.getId();
@@ -150,8 +152,15 @@ public class CanalService implements ApplicationContextAware {
                      */
                     connector.ack(batchId);
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             } finally {
                 connector.disconnect();
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
             }
         }
     }
